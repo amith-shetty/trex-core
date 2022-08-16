@@ -604,6 +604,7 @@ public:
         m_tunnel_loopback = false;
         m_tunnel_enabled = false;
         m_rx_dp_ring_size = 0;
+        m_latency_time = 0;
     }
 
     CParserOption(){
@@ -677,6 +678,7 @@ public:
     bool            m_astf_best_effort_mode;
     bool            m_tunnel_loopback;
     uint16_t        m_rx_dp_ring_size;              // Size of rings between Dp and Rx.
+    float           m_latency_time;
 
 
 public:
@@ -704,6 +706,9 @@ public:
     }
     bool is_rx_enabled() {
         return m_rx_thread_enabled;
+    }
+    bool is_latency_simulation_enabled() {
+        return ( (m_latency_time == 0) ? false : true);
     }
     void set_rx_enabled() {
         m_rx_thread_enabled = true;
