@@ -20,10 +20,103 @@
 #include <rte_ethdev.h>
 #include <rte_udp.h>
 #include <rte_tcp.h>
+#include <rte_malloc.h>
 #include "pre_test.h"
 #include "bp_sim.h"
 #include "dpdk_port_map.h"
 #include "trex_modes.h"
+
+
+/**
+ * A structure used to specify a rte_mbuf* tx_pkt
+ * and the timestamp associated with it.
+ * It will be used by an rte_ring to simulate latency.
+ */
+struct latency_pkt{
+    struct rte_mbuf** tx_pkt;
+    float pkt_timestamp;
+};
+
+struct latency_pkt_buffer{
+    //Store the pkt and timestamp
+    struct latency_pkt* m_lp;
+    uint64_t m_lp_size;
+    int64_t m_lp_to_add;
+    int64_t m_lp_to_remove;
+    int64_t m_lp_flush_size;
+
+    latency_pkt_buffer() {
+        m_lp_size = 100;
+        m_lp_flush_size = -1;
+        m_lp = (latency_pkt*)rte_malloc(NULL, m_lp_size * sizeof(latency_pkt), 0);
+        if(!m_lp) {
+                rte_panic("Malloc Failed!");
+        }
+        m_lp_to_add = -1;
+        m_lp_to_remove = -1;
+    }
+
+    // ~latency_pkt_buffer() {
+    //     rte_free(m_lp);
+    // }
+
+    inline void enq(rte_mbuf **val, float lat)
+    {
+        if (m_lp_to_remove == -1)
+        {
+            m_lp_to_remove = 0;
+            m_lp_to_add = 0;
+        }
+        else
+        {
+            if (m_lp_to_add == m_lp_size - 1)
+                m_lp_to_add = 0;
+            else
+                m_lp_to_add++;
+        }
+        m_lp[m_lp_to_add].tx_pkt = val;
+
+        m_lp[m_lp_to_add].pkt_timestamp = rte_get_tsc_cycles()/rte_get_tsc_hz() + lat;
+    }
+
+    inline void dq() {
+        if (m_lp_to_remove == -1)
+        {
+            cout << "Queue empty\n";
+            return;
+        }
+
+        if (m_lp_to_remove == m_lp_to_add)
+        {
+            m_lp_to_remove = -1;
+            m_lp_to_add = -1;
+        }
+        else
+        {
+            if (m_lp_to_remove == m_lp_size - 1)
+                m_lp_to_remove = 0;
+            else
+                m_lp_to_remove++;
+        }
+    }
+
+    inline bool is_queue_full() {
+        if ((m_lp_to_remove == 0 && m_lp_to_add == m_lp_size - 1) || (m_lp_to_remove == m_lp_to_add + 1))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    inline int get_q_size(){
+        int size = m_lp_to_add - m_lp_to_remove;
+        return size>=0? size : (m_lp_size - size +1);
+    }
+
+    inline bool is_queue_empty(){
+        return m_lp_to_remove == -1 ? true : false;
+    }
+};
 
 // These are statistics for packets we send, and do not expect to get back (Like ARP)
 // We reduce them from general statistics we report (and report them separately, so we can keep the assumption
@@ -200,7 +293,61 @@ class CPhyEthIF  {
             if (unlikely(m_dev_tx_offload_needed)) {
                 tx_burst_offload_csum(tx_pkts, nb_pkts, m_dev_tx_offload_needed);
             }
-            return rte_eth_tx_burst(m_repid, queue_id, tx_pkts, nb_pkts);
+
+            double lat = CGlobalInfo::m_options.m_latency_time;
+            if (lat <= 0)
+            {
+                return rte_eth_tx_burst(m_repid, queue_id, tx_pkts, nb_pkts);
+            }
+
+            uint16_t thread_id = rte_sys_gettid();
+            int i = 0;
+            int cnt, sent_now, sent = 0, start_ptr;
+
+            while (i < nb_pkts || sent < nb_pkts)
+            {
+
+                while (i < nb_pkts && !m_lp_buffer[thread_id].is_queue_full())
+                {
+                    if (m_lp_buffer[thread_id].is_queue_empty())
+                    {
+                        m_lp_buffer[thread_id].m_lp_to_remove = 0;
+                        m_lp_buffer[thread_id].m_lp_to_add = 0;
+                    }
+                    else
+                    {
+                        if (m_lp_buffer[thread_id].m_lp_to_add == m_lp_buffer[thread_id].m_lp_size - 1)
+                            m_lp_buffer[thread_id].m_lp_to_add = 0;
+                        else
+                            m_lp_buffer[thread_id].m_lp_to_add++;
+                    }
+                    m_lp_buffer[thread_id].m_lp[m_lp_buffer[thread_id].m_lp_to_add].tx_pkt = &tx_pkts[i];
+                    m_lp_buffer[thread_id].m_lp[m_lp_buffer[thread_id].m_lp_to_add].pkt_timestamp = now_sec() + lat;
+                    i++;
+                }
+
+                sent_now = 0;
+                cnt = 0;
+
+                start_ptr = m_lp_buffer[thread_id].m_lp_to_remove;
+
+                while (!m_lp_buffer[thread_id].is_queue_empty() && m_lp_buffer[thread_id].m_lp[m_lp_buffer[thread_id].m_lp_to_remove].pkt_timestamp <= now_sec())
+                {
+                    cnt++;
+                    m_lp_buffer[thread_id].dq();
+                }
+
+                if (cnt != 0)
+                {
+                    sent_now = rte_eth_tx_burst(m_repid, queue_id, m_lp_buffer[thread_id].m_lp[start_ptr].tx_pkt, cnt);
+                    if (sent_now != cnt)
+                    {
+                        rte_exit(1, "Problem sending packets");
+                    }
+                    sent += sent_now;
+                }
+            }
+            return sent;
         } else {
             for (int i=0; i<nb_pkts;i++) {
                 rte_pktmbuf_free(tx_pkts[i]);
@@ -286,6 +433,7 @@ private:
     float                    m_last_rx_rate;
     float                    m_last_tx_pps;
     float                    m_last_rx_pps;
+    std::map<uint16_t, struct latency_pkt_buffer> m_lp_buffer;
 
     /* holds the core ID list for this port - (core, dir) list*/
     std::vector<std::pair<uint8_t, uint8_t>> m_core_id_list;
