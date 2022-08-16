@@ -224,6 +224,7 @@ enum {
        OPT_HDRH,
        OPT_BNXT_SO,
        OPT_DISABLE_IEEE_1588,
+       OPT_ASTF_LATENCY,
 
        /* no more pass this */
        OPT_MAX
@@ -322,6 +323,7 @@ static CSimpleOpt::SOption parser_options[] =
         { OPT_SLEEPY_SCHEDULER,       "--sleeps",          SO_NONE},
         { OPT_BNXT_SO,                "--bnxt-so",         SO_NONE},
         { OPT_DISABLE_IEEE_1588,      "--disable-ieee-1588", SO_NONE},
+        { OPT_ASTF_LATENCY,           "--latency",          SO_REQ_SEP},
 
         SO_END_OF_OPTIONS
     };
@@ -426,6 +428,7 @@ static int COLD_FUNC  usage() {
     printf(" --disable-ieee-1588        : Enable Latency Measurement using HW timestamping and DPDK APIs. Currently works only for Stateless mode. \n");
     printf("                              Need to Enable COMPILE time DPDK config RTE_LIBRTE_IEEE1588 inorder to use this feature \n");
     printf("                              Uses PTP (IEEE 1588v2) Protocol to have the packets timestamped at NIC \n");
+    printf(" --latency <time>           : Specify the latency for each packet in the flow in sec. \n");
 
     printf("\n");
     printf(" Examples: ");
@@ -653,7 +656,9 @@ COLD_FUNC static int parse_options(int argc, char *argv[], bool first_time ) {
     po->m_tunnel_loopback = false;
     uint32_t tmp_data;
     float tmp_double;
-    
+
+    /*By default simulating latency is disabled */
+    po->m_latency_time = 0;
     /* first run - pass all parameters for existence */
     OptHash args_set = args_first_pass(argc, argv, po);
     
@@ -842,6 +847,9 @@ COLD_FUNC static int parse_options(int argc, char *argv[], bool first_time ) {
             case OPT_LATENCY :
                 latency_was_set=true;
                 sscanf(args.OptionArg(),"%d", &po->m_latency_rate);
+                break;
+            case OPT_ASTF_LATENCY :
+                sscanf(args.OptionArg(),"%f", &po->m_latency_time);
                 break;
             case OPT_LATENCY_MASK :
                 sscanf(args.OptionArg(),"%x", &po->m_latency_mask);
@@ -6836,6 +6844,8 @@ COLD_FUNC int main_test(int argc , char * argv[]){
             return (-1);
         }
     }
+    
+    /* add else statement to check if latency enabled for other mode and give error*/
 
     /* set affinity to the master core as default */
     cpu_set_t mask;
