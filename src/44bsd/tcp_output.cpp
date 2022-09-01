@@ -84,11 +84,9 @@ static inline void tcp_pkt_update_len(CFlowTemplate *ftp,
 
     uint32_t tcp_h_pyld=dlen+tcphlen;
     char *p=pkt.get_header_ptr();
+    rte_mbuf_t   * m=pkt.m_buf;
 
     if (ftp->m_offload_flags & OFFLOAD_TX_CHKSUM){
-
-        rte_mbuf_t   * m=pkt.m_buf;
-
         if (!ftp->m_is_ipv6){
             uint16_t tlen=ftp->m_offset_l4-ftp->m_offset_ip+tcp_h_pyld;
             m->l2_len = ftp->m_offset_ip;
@@ -151,10 +149,22 @@ static inline void tcp_pkt_update_len(CFlowTemplate *ftp,
             IPHeader * lpv4=(IPHeader *)(p+ftp->m_offset_ip);
             lpv4->setTotalLength(tlen);
             lpv4->updateCheckSumFast();
+            if ( ftp->m_offload_flags & CORRUPT_CHKSUM_TCP ) {
+                TCPHeader *  tcp=(TCPHeader *)(p+ftp->m_offset_l4);
+                tcp->setChecksumRaw(pkt_AddInetChecksumRaw(ftp->m_l4_pseudo_checksum-1 ,PKT_NTOHS(tlen-20)));
+            }
+            if ( ftp->m_offload_flags & CORRUPT_CHKSUM_IP ) {
+                // Change the time to live to currupt checksum
+                lpv4->setTimeToLive(lpv4->getTimeToLive()-1);
+            }
         }else{
             uint16_t tlen = tcp_h_pyld;
             IPv6Header * Ipv6=(IPv6Header *)(p+ftp->m_offset_ip);
             Ipv6->setPayloadLen(tlen);
+            if ( ftp->m_offload_flags & CORRUPT_CHKSUM_TCP ) {
+                TCPHeader *  tcp=(TCPHeader *)(p+ftp->m_offset_l4);
+                tcp->setChecksumRaw(pkt_AddInetChecksumRaw(ftp->m_l4_pseudo_checksum-1 ,PKT_NTOHS(tlen)));
+            }
         }
     }
 
