@@ -59,7 +59,6 @@
 #include "utl_random.h"
 #include "tunnels/tunnel_factory.h"
 
-int c1=0,c2=0;
 //extern    struct inpcb *tcp_last_inpcb;
 
 #define MYC(f) if (m_sts.f)  fprintf(fd," %-40s: %llu \n",#f,(unsigned long long)m_sts.f)
@@ -1559,21 +1558,6 @@ void CFlowTemplate::learn_ipv6_headers_from_network(IPv6Header * net_ipv6){
     }else{
         m_l4_pseudo_checksum=0;
     }
-    // if (m_offload_flags & OFFLOAD_TX_CHKSUM){
-    //     if (is_tcp()) {
-    //         m_l4_pseudo_checksum = rte_ipv6_phdr_cksum((struct rte_ipv6_hdr *)ipv6,(RTE_MBUF_F_TX_IPV6 | RTE_MBUF_F_TX_TCP_CKSUM));
-    //     }else{
-    //         m_l4_pseudo_checksum = rte_ipv6_phdr_cksum((struct rte_ipv6_hdr *)ipv6,(RTE_MBUF_F_TX_IPV6 | RTE_MBUF_F_TX_UDP_CKSUM));
-    //     }
-    // }else{
-        // Corrupt checksum
-        // if (m_offload_flags & CORRUPT_CHKSUM_TCP) {
-            
-            //m_offload_flags |= OFFLOAD_TX_CHKSUM;
-        // } else {
-        //     m_l4_pseudo_checksum = 0;
-        // }
-    // }
 
 }
 
