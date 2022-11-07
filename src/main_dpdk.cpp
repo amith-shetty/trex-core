@@ -134,7 +134,7 @@ static char g_loglevel_str[20];
 static char g_master_id_str[10];
 static char g_image_postfix[10];
 static CPciPorts port_map;
-uint16_t RandomFunctionParameter::percent = 50;
+uint16_t RandomFunctionParameter::percent = 0;
 
 #define TREX_NAME "_t-rex-64"
 
@@ -200,6 +200,8 @@ enum {
        OPT_CHECKSUM_OFFLOAD_DISABLE,
        OPT_TSO_OFFLOAD_DISABLE,
        OPT_LRO_OFFLOAD_DISABLE,
+       OPT_CORRUPT_TCP_CHECKSUM_ENABLE,
+       OPT_CORRUPT_IP_CHECKSUM_ENABLE,
        OPT_CLOSE,
        OPT_ARP_REF_PER,
        OPT_LIMT_ARP_REQ,
@@ -300,6 +302,8 @@ static CSimpleOpt::SOption parser_options[] =
         { OPT_CHECKSUM_OFFLOAD_DISABLE, "--checksum-offload-disable", SO_NONE   },
         { OPT_TSO_OFFLOAD_DISABLE,  "--tso-disable", SO_NONE   },
         { OPT_LRO_OFFLOAD_DISABLE,  "--lro-disable", SO_NONE   },
+        { OPT_CORRUPT_TCP_CHECKSUM_ENABLE, "--corrupt-tcp-checksum-enable", SO_REQ_SEP   },
+        { OPT_CORRUPT_IP_CHECKSUM_ENABLE, "--corrupt-ip-checksum-enable", SO_REQ_SEP   },
         { OPT_ACTIVE_FLOW,            "--active-flows",   SO_REQ_SEP  },
         { OPT_NTACC_SO,               "--ntacc-so", SO_NONE    },
         { OPT_MLX5_SO,                "--mlx5-so", SO_NONE    },
@@ -363,6 +367,10 @@ static int COLD_FUNC  usage() {
     printf(" --checksum-offload-disable : Disable IP, TCP and UDP tx checksum offloading, using DPDK. This requires all used interfaces to support this  \n");
     printf(" --tso-disable              : disable TSO (advanced TCP mode) \n");
     printf(" --lro-disable              : disable LRO (advanced TCP mode) \n");
+    printf("--corrupt-tcp-checksum-enable: enable tcp checksum corruption. \n");
+    printf("                              Example: --corrupt-checksum-enable tcp 50 corrupt 50 percent TCP layer checksum. \n");
+    printf("--corrupt-ip-checksum-enable : enable ip checksum corruption. \n");
+    printf("                              Example: --corrupt-checksum-enable ip 25 corrupt 25 percent IP layer checksum. \n");
     printf(" --client-cfg <file>        : YAML file describing clients configuration \n");
     printf(" --close-at-end             : Call rte_eth_dev_stop and close at exit. Calling these functions caused link down issues in older versions, \n");
     printf("                               so we do not call them by default for now. Leaving this as option in case someone thinks it is helpful for him \n");
@@ -950,6 +958,16 @@ COLD_FUNC static int parse_options(int argc, char *argv[], bool first_time ) {
                 break;
             case OPT_LRO_OFFLOAD_DISABLE:
                 po->preview.setLroOffloadDisable(true);
+                break;
+            case OPT_CORRUPT_TCP_CHECKSUM_ENABLE:
+                sscanf(args.OptionArg(),"%d", &po->m_corrupt_tcp_checksum_percent);
+                po->preview.setCorruptChecksumTcp(true);
+                po->preview.setChecksumOffloadDisable(true); // Offload should be disabled for checksum corruption
+                break;
+            case OPT_CORRUPT_IP_CHECKSUM_ENABLE:
+                sscanf(args.OptionArg(),"%d", &po->m_corrupt_ip_checksum_percent);
+                po->preview.setCorruptChecksumIp(true);
+                po->preview.setChecksumOffloadDisable(true); // Offload should be disabled for checksum corruption
                 break;
             case OPT_CLOSE:
                 po->preview.setCloseEnable(true);

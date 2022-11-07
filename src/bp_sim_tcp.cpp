@@ -775,6 +775,15 @@ void CFlowGenListPerThread::Create_tcp_ctx(void) {
     if (lp->get_dev_tso_support()) {
         dev_offload_flags |= TCP_OFFLOAD_TSO;
     }
+    if (lp->getCorruptChecksum()) {
+        dev_offload_flags = 0;
+        if (lp->getCorruptChecksumTcp()) {
+            dev_offload_flags |= CORRUPT_CHKSUM_TCP;
+        } 
+        if (lp->getCorruptChecksumIp()) {
+            dev_offload_flags |= CORRUPT_CHKSUM_IP;
+        }
+    }
 
     m_c_tcp->set_offload_dev_flags(dev_offload_flags);
     m_s_tcp->set_offload_dev_flags(dev_offload_flags);

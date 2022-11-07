@@ -45,3 +45,7 @@ bool generate_bool(ParamHash param, std::string functionName)
         }
     }
 }
+
+bool generate_bool(uint16_t percent) {
+    return (rte_rand_max(100) < percent);
+}

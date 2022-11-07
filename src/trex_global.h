@@ -101,6 +101,7 @@ public:
     void clean(){
         m_flags = 0;
         m_flags1=0;
+        m_corrupt_checksum=0;
         setCores(1);
         set_vlan_mode(VLAN_MODE_NONE);
         set_zmq_publish_enable(true);
@@ -462,6 +463,26 @@ public:
     bool get_latency_diag() {
         return (btGetMaskBit32(m_flags1, 26, 26) ? true : false);
     }
+    
+    void setCorruptChecksumTcp(bool tcp_enable) {
+        m_corrupt_checksum |= (tcp_enable?1:0)<<3;
+    }
+
+    void setCorruptChecksumIp(bool ip_enable) {
+        m_corrupt_checksum |= (ip_enable?1:0)<<4;
+    }
+
+    bool getCorruptChecksum() {
+        return m_corrupt_checksum;
+    }
+
+    bool getCorruptChecksumTcp() {
+        return (m_corrupt_checksum & (1<<3));
+    }
+
+    bool getCorruptChecksumIp() {
+        return (m_corrupt_checksum & (1<<4));
+    }
 
 public:
     void Dump(FILE *fd);
@@ -469,6 +490,7 @@ public:
 private:
     uint32_t      m_flags;
     uint32_t      m_flags1;
+    uint32_t          m_corrupt_checksum;
 };
 
 
@@ -613,6 +635,8 @@ public:
         m_tunnel_loopback = false;
         m_tunnel_enabled = false;
         m_rx_dp_ring_size = 0;
+        m_corrupt_tcp_checksum_percent = 0;
+        m_corrupt_ip_checksum_percent = 0;
     }
 
     CParserOption(){
@@ -687,6 +711,8 @@ public:
     bool            m_astf_best_effort_mode;
     bool            m_tunnel_loopback;
     uint16_t        m_rx_dp_ring_size;              // Size of rings between Dp and Rx.
+    uint16_t        m_corrupt_tcp_checksum_percent;
+    uint16_t        m_corrupt_ip_checksum_percent;
 
 
 public:

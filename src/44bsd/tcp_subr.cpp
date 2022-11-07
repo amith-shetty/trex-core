@@ -56,6 +56,7 @@
 #include <astf/trex_astf_dp_core.h>
 #include <cmath>
 #include "utl_counter.h"
+#include "utl_random.h"
 #include "tunnels/tunnel_factory.h"
 
 //extern    struct inpcb *tcp_last_inpcb;
@@ -1690,6 +1691,18 @@ void CFlowTemplate::build_template_tcp(CPerProfileCtx * pctx){
 
        lpTCP->setSourcePort(m_src_port);
        lpTCP->setDestPort(m_dst_port);
+       // Random function decides if we will be corrupting the packet or not
+       uint16_t tcp_corruption = CGlobalInfo::m_options.m_corrupt_tcp_checksum_percent;
+       uint16_t ip_corruption = CGlobalInfo::m_options.m_corrupt_ip_checksum_percent;
+       if (tcp_corruption) {
+            m_offload_flags = generate_bool(tcp_corruption) ? (m_offload_flags | CORRUPT_CHKSUM_TCP) : (m_offload_flags  & ~CORRUPT_CHKSUM_TCP);
+       }
+       if (ip_corruption) {
+            m_offload_flags = generate_bool(ip_corruption) ? (m_offload_flags | CORRUPT_CHKSUM_IP) : (m_offload_flags & ~CORRUPT_CHKSUM_IP);
+       }
+       if (!m_offload_flags) {
+            m_offload_flags |= OFFLOAD_TX_CHKSUM;
+       }
        if (m_offload_flags & OFFLOAD_TX_CHKSUM){
            if (m_is_ipv6) {
                m_l4_pseudo_checksum = rte_ipv6_phdr_cksum((struct rte_ipv6_hdr *)(p+m_offset_ip),(RTE_MBUF_F_TX_IPV6 | RTE_MBUF_F_TX_TCP_CKSUM));
@@ -1697,7 +1710,16 @@ void CFlowTemplate::build_template_tcp(CPerProfileCtx * pctx){
                m_l4_pseudo_checksum = rte_ipv4_phdr_cksum((struct rte_ipv4_hdr *)(p+m_offset_ip),(RTE_MBUF_F_TX_IPV4 |RTE_MBUF_F_TX_IP_CKSUM|RTE_MBUF_F_TX_TCP_CKSUM));
            }
        }else{
-            m_l4_pseudo_checksum=0;
+            // Check if need to corrupt checksum
+            if ((m_offload_flags & CORRUPT_CHKSUM_TCP) || (m_offload_flags & CORRUPT_CHKSUM_IP)) {
+                if (m_is_ipv6) {
+                    m_l4_pseudo_checksum = rte_ipv6_phdr_cksum((struct rte_ipv6_hdr *)(p+m_offset_ip),(RTE_MBUF_F_TX_IPV6 | RTE_MBUF_F_TX_TCP_CKSUM));
+                } else{
+                    m_l4_pseudo_checksum = rte_ipv4_phdr_cksum((struct rte_ipv4_hdr *)(p+m_offset_ip),(RTE_MBUF_F_TX_IPV4 |RTE_MBUF_F_TX_IP_CKSUM|RTE_MBUF_F_TX_TCP_CKSUM));
+                }
+            } else {
+                m_l4_pseudo_checksum=0;
+            }
        }
 }
 

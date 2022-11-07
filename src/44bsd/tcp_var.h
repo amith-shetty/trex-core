@@ -392,6 +392,8 @@ public:
     #define OFFLOAD_TX_CHKSUM   0x0001      /* DPDK_CHECK_SUM */
     #define TCP_OFFLOAD_TSO     0x0002      /* DPDK_TSO_CHECK_SUM */
     #define OFFLOAD_RX_CHKSUM   0x0004      /* check RX checksum L4*/
+    #define CORRUPT_CHKSUM_TCP  0x0008      /* check checksum corruption for L4*/
+    #define CORRUPT_CHKSUM_IP   0x0010      /* check checksum corruption */
 
     uint8_t  m_template_pkt[PACKET_TEMPLATE_SIZE];   /* template packet */
 };
