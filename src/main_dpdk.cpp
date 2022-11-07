@@ -683,7 +683,7 @@ COLD_FUNC static int parse_options(int argc, char *argv[], bool first_time ) {
     float tmp_double;
 
     /*By Default induced latency is 0.0*/
-    po->m_induce_send_latency_duration = 0;
+    po->m_induce_server_latency_duration = 0;
 
     /* Create a copy for argv for passing in args_first_pass 
        There seems to be a bug in SimpleOpt.h. It doesn't
@@ -1017,7 +1017,7 @@ COLD_FUNC static int parse_options(int argc, char *argv[], bool first_time ) {
                     cout<<"(use --help to get command line help)\n";
                     break;
                 }
-                sscanf(rgpszArg[0], "%d", &po->m_induce_send_latency_duration);
+                sscanf(rgpszArg[0], "%d", &po->m_induce_server_latency_duration);
                 sscanf(rgpszArg[1], "%d", &RandomFunctionParameter::percent);
                 //sscanf(args.OptionArg(), "%d", &po->m_induce_send_latency_duration);
                 break;
@@ -2052,7 +2052,7 @@ int HOT_FUNC CCoreEthIF::send_pkt(CCorePerPort * lp_port,
     uint32_t induce_latency_duration = 0;
     if (&m_ports[1] == lp_port)
     {
-        induce_latency_duration = CGlobalInfo::m_options.m_induce_send_latency_duration;
+        induce_latency_duration = CGlobalInfo::m_options.m_induce_server_latency_duration;
     }
     if (induce_latency_duration > 0 && generate_bool())
     {
