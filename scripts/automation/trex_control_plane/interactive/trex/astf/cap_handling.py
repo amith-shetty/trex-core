@@ -1,3 +1,4 @@
+
 from .trex_astf_exceptions import ASTFError
 import dpkt
 import struct
@@ -240,16 +241,8 @@ class _CPcapReader_help(object):
                 # don't check for SYN
                 if tcp and (l4.flags & 0x02) == 0:
                     if l4.sport == self.s_port:
-                        if exp_c_seq != tcp.seq:
-                            self.fail("""TCP seq in packet {0} is {1}. We expected {2}. Please check that there are no packet
-                            loss or retransmission in cap file"""
-                                      .format(index, tcp.seq, exp_c_seq))
                         exp_c_seq = tcp.seq + l4_payload_len
                     else:
-                        if exp_s_seq != tcp.seq:
-                            self.fail("""TCP seq in packet {0} is {1}. We expected {2}. Please check that there are
-                            no packet loss or retransmission in cap file"""
-                                      .format(index, tcp.seq, exp_s_seq))
                         exp_s_seq = tcp.seq + l4_payload_len
 
         self.analyzed =True

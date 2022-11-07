@@ -105,6 +105,6 @@ public:
 
 /* Generates bool value with given probability */
 bool generate_bool(ParamHash param={{}}, std::string functionName="");
-bool generate_bool(uint16_t percent);
+bool generate_bool(uint16_t);
 
 #endif /* UTL_RANDOM_H */

@@ -2050,7 +2050,7 @@ int HOT_FUNC CCoreEthIF::send_pkt(CCorePerPort * lp_port,
 
     uint16_t len = lp_port->m_len;
     uint32_t induce_latency_duration = 0;
-    if (&m_ports[0] == lp_port)
+    if (&m_ports[1] == lp_port)
     {
         induce_latency_duration = CGlobalInfo::m_options.m_induce_send_latency_duration;
     }

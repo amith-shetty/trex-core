@@ -1036,7 +1036,6 @@ main_src = SrcGroup(dir='src',
              'utils/utl_sync_barrier.cpp',
              'utils/utl_term_io.cpp',
              'utils/utl_yaml.cpp',
-             'utils/utl_random.cpp',
              ])
 
 cmn_src = SrcGroup(dir='src/common',
